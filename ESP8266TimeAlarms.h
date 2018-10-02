@@ -17,9 +17,21 @@
 #endif
 
 #define USE_SPECIALIST_METHODS  // define this for testing
+
 typedef enum {
-    dowInvalid, dowSunday, dowMonday, dowTuesday, dowWednesday, dowThursday, dowFriday, dowSaturday
+    dowInvalid   = B1000000, 
+    dowSunday    = B00000001, 
+    dowMonday    = B00000010, 
+    dowTuesday   = B00000100,  
+    dowWednesday = B00001000,  
+    dowThursday  = B00010000, 
+    dowFriday    = B00100000, 
+    dowSaturday  = B01000000,
+    dowMondayToFriday  = B00111110,
 } timeDayOfWeek_t;
+
+typedef uint8_t dtDayOfWeek_t;
+
 #define SECS_PER_MIN  ((time_t)(60UL))
 #define SECS_PER_HOUR ((time_t)(3600UL))
 #define SECS_PER_DAY  ((time_t)(SECS_PER_HOUR * 24UL))
@@ -67,6 +79,7 @@ typedef struct {
                                // or weekly alarm periods
   uint8_t isEnabled      :1 ;  // the timer is only actioned if isEnabled is true
   uint8_t isOneShot      :1 ;  // the timer will be de-allocated after trigger is processed
+  uint8_t daysOfWeek     :B11111111;  // Enabled days for alarm
 } AlarmMode_t;
 
 // new time based alarms should be added just before dtLastAlarmType
@@ -76,6 +89,7 @@ typedef enum {
   dtExplicitAlarm,
   dtDailyAlarm,
   dtWeeklyAlarm,
+  dtMultiWeeklyAlarm,
   dtLastAlarmType
 } dtAlarmPeriod_t ; // in future: dtBiweekly, dtMonthly, dtAnnual
 
@@ -120,7 +134,7 @@ private:
   void serviceAlarms();
   uint8_t isServicing;
   uint8_t servicedAlarmId; // the alarm currently being serviced
-  AlarmID_t create(time_t value, OnTick_t onTickHandler, uint8_t isOneShot, dtAlarmPeriod_t alarmType);
+  AlarmID_t create(time_t value, OnTick_t onTickHandler, uint8_t isOneShot, dtAlarmPeriod_t alarmType, uint8_t dtDayOfWeek_t = 255);
 
 public:
   TimeAlarmsClass();
@@ -154,10 +168,8 @@ public:
   }
 
   // trigger once on a given day and time
-  AlarmID_t alarmOnce(const timeDayOfWeek_t DOW, const int H, const int M, const int S, OnTick_t onTickHandler) {
-    time_t value = (DOW-1) * SECS_PER_DAY + AlarmHMS(H,M,S);
-    if (value <= 0) return dtINVALID_ALARM_ID;
-    return create(value, onTickHandler, true, dtWeeklyAlarm);
+  AlarmID_t alarmOnce(const dtDayOfWeek_t DOW, const int H, const int M, const int S, OnTick_t onTickHandler) {
+    return create(AlarmHMS(H,M,S), onTickHandler, true, dtWeeklyAlarm, DOW);
   }
 
   // trigger daily at given time of day
@@ -169,11 +181,16 @@ public:
     return alarmRepeat(AlarmHMS(H,M,S), onTickHandler);
   }
 
-  // trigger weekly at a specific day and time
-  AlarmID_t alarmRepeat(const timeDayOfWeek_t DOW, const int H, const int M, const int S, OnTick_t onTickHandler) {
-    time_t value = (DOW-1) * SECS_PER_DAY + AlarmHMS(H,M,S);
-    if (value <= 0) return dtINVALID_ALARM_ID;
-    return create(value, onTickHandler, false, dtWeeklyAlarm);
+  // // trigger weekly at a specific day and time
+  // AlarmID_t alarmRepeat(const timeDayOfWeek_t DOW, const int H, const int M, const int S, OnTick_t onTickHandler) {
+  //   time_t value = (DOW-1) * SECS_PER_DAY + AlarmHMS(H,M,S);
+  //   if (value <= 0) return dtINVALID_ALARM_ID;
+  //   return create(value, onTickHandler, false, dtWeeklyAlarm);
+  // }
+
+   // trigger weekly at a specific day(or days) and time
+  AlarmID_t alarmRepeat(const dtDayOfWeek_t DOW, const int H, const int M, const int S, OnTick_t onTickHandler) {
+    return create(AlarmHMS(H,M,S), onTickHandler, false, dtWeeklyAlarm, DOW);
   }
 
   // trigger once after the given number of seconds

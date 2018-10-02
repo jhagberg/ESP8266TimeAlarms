@@ -59,14 +59,25 @@ void AlarmClass::updateNextTrigger()
           nextTrigger = value + previousMidnight(now);
         }
       } else if (Mode.alarmType == dtWeeklyAlarm) {
-        // if this is a weekly alarm
-        if ((value + previousSunday(now)) <= now) {
-          // if day has passed then set for the next week.
-          nextTrigger = value + nextSunday(now);
+        // // if this is a weekly alarm
+        // if ((value + previousSunday(now)) <= now) {
+        //   // if day has passed then set for the next week.
+        //   nextTrigger = value + nextSunday(now);
+        // } else {
+        //   // set the date to this week today and add the time given in value
+        //   nextTrigger = value + previousSunday(now);
+        // }
+
+        // if this is a weekly alarm, will update like daily alarm
+        // NOTE: WeekOfDay will checked later..
+        if (value + previousMidnight(now) <= now) {
+          // if time has passed then set for tomorrow
+          nextTrigger = value + nextMidnight(now);
         } else {
-          // set the date to this week today and add the time given in value
-          nextTrigger = value + previousSunday(now);
+          // set the date to today and add the time given in value
+          nextTrigger = value + previousMidnight(now);
         }
+
       } else {
         // its not a recognized alarm type - this should not happen
         Mode.isEnabled = false;  // Disable the alarm
@@ -245,6 +256,16 @@ void TimeAlarmsClass::serviceAlarms()
         } else {
           Alarm[servicedAlarmId].updateNextTrigger();
         }
+
+        // Validate DayOfWeek
+        if (Alarm[servicedAlarmId].Mode.alarmType == dtWeeklyAlarm) {
+          int dayOfWeek = dayOfWeek(now); // sunday = 1
+          dtDayOfWeek_t daysOfWeek = Alarm[servicedAlarmId].Mode.daysOfWeek;
+          if(!bitRead(daysOfWeek, (dayOfWeek - 1))){
+            continue;
+          }
+        }
+
         if (TickHandler != NULL) {
           TickHandler();     // call the handler
         }
@@ -270,7 +291,7 @@ time_t TimeAlarmsClass::getNextTrigger()
 }
 
 // attempt to create an alarm and return true if successful
-AlarmID_t TimeAlarmsClass::create(time_t value, OnTick_t onTickHandler, uint8_t isOneShot, dtAlarmPeriod_t alarmType)
+AlarmID_t TimeAlarmsClass::create(time_t value, OnTick_t onTickHandler, uint8_t isOneShot, dtAlarmPeriod_t alarmType, dtDayOfWeek_t daysOfWeek)
 {
   time_t now = time(nullptr);
   if ( ! ( (dtIsAlarm(alarmType) && now < SECS_PER_YEAR) || (dtUseAbsoluteValue(alarmType) && (value == 0)) ) ) {
@@ -281,6 +302,7 @@ AlarmID_t TimeAlarmsClass::create(time_t value, OnTick_t onTickHandler, uint8_t 
         Alarm[id].onTickHandler = onTickHandler;
         Alarm[id].Mode.isOneShot = isOneShot;
         Alarm[id].Mode.alarmType = alarmType;
+        Alarm[id].Mode.daysOfWeek = daysOfWeek;
         Alarm[id].value = value;
         enable(id);
         return id;  // alarm created ok

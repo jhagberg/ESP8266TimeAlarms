@@ -1,6 +1,6 @@
 {
 "name": "ESP8266TimeAlarms",
-"frameworks": "ESP8266", "Arduino",
+"frameworks": ["Arduino"],
 "keywords": "Time, alarm, schedule, date, hour, minute, second, day, week, month, year",
 "description": "ESP8266 v2.4.0+ Schedule alarms to occur at specific times",
 "url": "http://playground.arduino.cc/Code/Time",
